@@ -13,7 +13,15 @@
     <script src="/static/js/lib/zepto.js"></script>
     <script src="/static/js/lib/require.js"></script>
     <script>
-        require(['/static/js/help/index.js'], function (mod) {
+        var modName = 'js/help/index';
+        var modUrl = '/static/js/help/index.js';
+        var paths = {};
+        paths[modName] = modUrl.replace('.js', '');
+        require.config({
+            baseUrl: '/static',
+            paths: paths
+        })
+        require([modName], function (mod) {
             mod && mod.init && mod.init()
         });
     </script>

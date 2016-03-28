@@ -2,6 +2,8 @@ var gulp          = require('gulp');
 var iconfont      = require('gulp-iconfont');
 var iconfontCss   = require('gulp-iconfont-css');
 var lessc         = require('gulp-less');
+var through       = require('through2');
+var rjs           = require('requirejs');
 var rev           = require('gulp-rev');
 var revCollector  = require('gulp-rev-collector');
 var sequence      = require('gulp-sequence');
@@ -29,11 +31,29 @@ var config = {
     imgDir: './img/'
 };
 
-gulp.task('clean', function () {
+function uglifyJs () {
+    return through.obj(function (file, encoding, callback) {
+        var filePath = file.path;
+        var _this = this;
+        rjs.optimize({
+            baseUrl: config.srcAssets,
+            name: path.relative(config.srcAssets, filePath).replace('.js', ''),
+            optimizeAllPluginResources: false,
+            out: function cb(params) {
+                file.contents = new Buffer(params);
+                _this.push(file);
+                callback();
+            }
+        });
+        
+    });
+};
+
+gulp.task('clean', function clean () {
     return del(config.output);
 });
 
-gulp.task('fontCreate', function () {
+gulp.task('fontCreate', function fontCreate () {
     gulp.src(path.join(config.srcAssets, config.iconsFiles))
         .pipe(iconfontCss({
             fontName: config.fontName,
@@ -48,7 +68,7 @@ gulp.task('fontCreate', function () {
         .pipe(gulp.dest(path.join(config.srcAssets, config.fontDir)));
 });
 
-gulp.task('iconRev', function () {
+gulp.task('iconRev', function iconRev () {
     return gulp.src(path.join(config.srcAssets, config.fontFiles))
         .pipe(rev())
         .pipe(gulp.dest(path.join(config.outputAssets, config.fontDir)))
@@ -58,22 +78,22 @@ gulp.task('iconRev', function () {
 
 gulp.task('iconfonts', sequence('fontCreate', 'iconRev'));
 
-gulp.task('imgRev', function imgRev() {
+gulp.task('imgRev', function imgRev () {
     return gulp.src(path.join(config.srcAssets, config.imgFiles))
         .pipe(rev())
         .pipe(gulp.dest(path.join(config.outputAssets, config.imgDir)))
         .pipe(rev.manifest('imgs-rev.json'))
-        .pipe(gulp.dest(config.revDir))
+        .pipe(gulp.dest(config.revDir));
 });
 
 
-gulp.task('less2css', function() {
+gulp.task('less2css', function less2css () {
     return gulp.src([path.join(config.srcAssets, config.cssFiles)])
         .pipe(lessc({ relativeUrls: true }))
         .pipe(gulp.dest(path.join(config.outputAssets, config.cssDir)));
 });
 
-gulp.task('cssRev', function () {
+gulp.task('cssRev', function cssRev () {
     return gulp.src([path.join(config.revDir, './*.json'), path.join(config.outputAssets, config.cssFiles.replace('less', 'css'))])
         .pipe(revCollector({
             replaceReved: true,
@@ -89,10 +109,19 @@ gulp.task('cssRev', function () {
         .pipe(rev())
         .pipe(gulp.dest(path.join(config.outputAssets, config.cssDir)))
         .pipe(rev.manifest('css-rev.json'))
-        .pipe(gulp.dest(config.revDir))
+        .pipe(gulp.dest(config.revDir));
 });
 
-gulp.task('htmlRev', function () {
+gulp.task('jsRev', function () {
+    return gulp.src(path.join(config.srcAssets, config.jsFiles))
+        .pipe(uglifyJs())
+        .pipe(rev())
+        .pipe(gulp.dest(path.join(config.outputAssets, config.jsDir)))
+        .pipe(rev.manifest('js-rev.json'))
+        .pipe(gulp.dest(config.revDir));
+});
+
+gulp.task('htmlRev', function htmlRev () {
     return gulp.src([config.revDir + '/*.json', config.srcViewFiles])
         .pipe(revCollector({
             replaceReved: true,
@@ -102,13 +131,16 @@ gulp.task('htmlRev', function () {
                 },
                 '/css/': function(value) {
                     return '/css/' + value;
+                },
+                '/js/': function(value) {
+                    return '/js/' + value;
                 }
             }
         }))
         .pipe(gulp.dest(config.outputViews));
 });
 
-gulp.task('serve', function () {  
+gulp.task('serve', function serve () {  
     browserSync.init({
         server: {
             baseDir: './',
@@ -121,8 +153,8 @@ gulp.task('serve', function () {
         }
     });
     
-    gulp.watch("./views/**/*.html").on('change', browserSync.reload);
-    gulp.watch("./static/**/*").on('change', browserSync.reload);
+    gulp.watch(config.srcViewFiles).on('change', browserSync.reload);
+    gulp.watch(config.srcAssets).on('change', browserSync.reload);
 });
 
-gulp.task('default', sequence('clean', ['iconfonts', 'imgRev', 'less2css'], 'cssRev', 'htmlRev'));
+gulp.task('default', sequence('clean', ['iconfonts', 'imgRev', 'less2css'], ['cssRev', 'jsRev'], 'htmlRev'));
