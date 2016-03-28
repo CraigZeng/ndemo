@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>test</title>
+    <link rel="stylesheet" href="/static/css/help/index.css"/>
+</head>
+<body>
+    <div>
+        <img src="/static/img/box.png" alt="">
+        <i class="icon-font icon-phone"></i>
+    </div>
+    <script src="/static/js/lib/zepto.js"></script>
+    <script src="/static/js/lib/require.js"></script>
+    <script>
+        require(['/static/js/help/index.js'], function (mod) {
+            mod && mod.init && mod.init()
+        });
+    </script>
+</body>
+</html>html5
