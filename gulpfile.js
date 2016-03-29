@@ -90,7 +90,8 @@ gulp.task('imgRev', function imgRev () {
 gulp.task('less2css', function less2css () {
     return gulp.src([path.join(config.srcAssets, config.cssFiles)])
         .pipe(lessc({ relativeUrls: true }))
-        .pipe(gulp.dest(path.join(config.outputAssets, config.cssDir)));
+        .pipe(gulp.dest(path.join(config.outputAssets, config.cssDir)))
+        .pipe(browserSync.stream());
 });
 
 gulp.task('cssRev', function cssRev () {
@@ -146,15 +147,21 @@ gulp.task('serve', function serve () {
             baseDir: './',
             index: '/views/index.html',
             middleware: [
-                function (req, res, next) { 
-                   next(); 
+                function (req, res, next) {
+                    if (req.url.indexOf('.css') !== -1) {
+                        req.url = path.join('/' + config.output, req.url); 
+                    }
+                    next(); 
                 }
            ]
         }
     });
     
     gulp.watch(config.srcViewFiles).on('change', browserSync.reload);
-    gulp.watch(config.srcAssets).on('change', browserSync.reload);
+    gulp.watch(path.join(config.srcAssets, '**')).on('change', browserSync.reload);
+    gulp.watch(path.join(config.srcAssets, config.iconsFiles), ['iconfonts', 'less2css']);
+    gulp.watch(path.join(config.srcAssets, config.cssFiles), ['less2css']);
 });
 
-gulp.task('default', sequence('clean', ['iconfonts', 'imgRev', 'less2css'], ['cssRev', 'jsRev'], 'htmlRev'));
+gulp.task('default', sequence('serve'))
+gulp.task('release', sequence('clean', ['iconfonts', 'imgRev', 'less2css'], ['cssRev', 'jsRev'], 'htmlRev'));
